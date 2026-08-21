@@ -2,43 +2,54 @@ import os
 import flet as ft
 from google import genai
 
-def main(page: ft.Page):
-    page.title = "Gemini AI Chat"
-    page.theme_mode = ft.ThemeMode.DARK
-    page.padding = 10
-    
-    # Initialize Gemini API Client
-    # Replace 'YOUR_GEMINI_API_KEY' with your actual key or set GEMINI_API_KEY env variable
-    api_key = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
-    client = genai.Client(api_key=api_key)
+# Initialize the Gemini Client using the environment variable GEMINI_API_KEY
+client = genai.Client()
 
-    # Chat messages container
+def main(page: ft.Page):
+    # --- Page Setup ---
+    page.title = "Prosper AI"
+    page.theme_mode = ft.ThemeMode.DARK
+    page.padding = 15
+    page.vertical_alignment = ft.MainAxisAlignment.END
+
+    # --- UI Components ---
     chat_list = ft.ListView(
         expand=True,
         spacing=10,
-        auto_scroll=True
+        auto_scroll=True,
     )
 
-    # Text input field
     user_input = ft.TextField(
         hint_text="Type a message...",
         expand=True,
-        border_radius=20,
-        autofocus=True
+        autofocus=True,
+        shift_enter=True,
+        min_lines=1,
+        max_lines=5,
     )
 
-    def send_message(e):
-        prompt = user_input.text.strip()
+    send_button = ft.IconButton(
+        icon=ft.icons.SEND_ROUNDED,
+        icon_color=ft.colors.BLUE_400,
+        tooltip="Send message",
+    )
+
+    # --- Event Handlers ---
+    def send_message_click(e):
+        prompt = user_input.value.strip()
         if not prompt:
             return
 
-        # 1. Add User Message to Chat
+        # Clear input field
+        user_input.value = ""
+        
+        # Add User Message to Chat
         chat_list.controls.append(
             ft.Row(
-                [
+                controls=[
                     ft.Container(
-                        content=ft.Text(prompt, color=ft.Colors.WHITE),
-                        bgcolor=ft.Colors.BLUE_600,
+                        content=ft.Text(prompt, color=ft.colors.WHITE),
+                        bgcolor=ft.colors.BLUE_800,
                         padding=12,
                         border_radius=15,
                     )
@@ -46,26 +57,25 @@ def main(page: ft.Page):
                 alignment=ft.MainAxisAlignment.END,
             )
         )
-        user_input.value = ""
         page.update()
 
-        # 2. Get Response from Gemini
+        # Generate Gemini Response
         try:
             response = client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=prompt,
             )
-            reply = response.text
+            bot_text = response.text if response.text else "No response generated."
         except Exception as err:
-            reply = f"Error: {str(err)}"
+            bot_text = f"Error: {str(err)}"
 
-        # 3. Add AI Response to Chat
+        # Add Gemini Response to Chat
         chat_list.controls.append(
             ft.Row(
-                [
+                controls=[
                     ft.Container(
-                        content=ft.Text(reply, color=ft.Colors.WHITE),
-                        bgcolor=ft.Colors.GREY_800,
+                        content=ft.Text(bot_text, color=ft.colors.WHITE),
+                        bgcolor=ft.colors.GREY_800,
                         padding=12,
                         border_radius=15,
                     )
@@ -75,22 +85,24 @@ def main(page: ft.Page):
         )
         page.update()
 
-    # Send button
-    send_btn = ft.IconButton(
-        icon=ft.Icons.SEND_ROUNDED,
-        icon_color=ft.Colors.BLUE_400,
-        on_click=send_message
+    # Bind Send Actions
+    send_button.on_click = send_message_click
+    user_input.on_submit = send_message_click
+
+    # Input Bar Layout
+    input_row = ft.Row(
+        controls=[
+            user_input,
+            send_button,
+        ],
+        alignment=ft.MainAxisAlignment.CENTER,
     )
 
-    # App Layout
+    # --- Add Controls to Page ---
     page.add(
-        ft.AppBar(
-            title=ft.Text("Gemini AI Assistant"),
-            center_title=True,
-            bgcolor=ft.Colors.SURFACE_VARIANT
-        ),
         chat_list,
-        ft.Row([user_input, send_btn])
+        input_row,
     )
 
-ft.app(target=main)
+if __name__ == "__main__":
+    ft.app(target=main)
