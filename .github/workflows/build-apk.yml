@@ -34,7 +34,7 @@ jobs:
 
       - name: Build APK
         run: |
-          yes | flet build apk --project-name "prosper_ai" --product "Prosper AI"
+          yes | flet build apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
