@@ -2,8 +2,8 @@ import os
 import flet as ft
 from google import genai
 
-# Initialize the Gemini Client using the environment variable GEMINI_API_KEY
-client = genai.Client()
+# Initialize the Gemini Client
+client = genai.Client(api_key="AQ.Ab8RN6IxpFR5ilSn1AqRkwNvY9hhybqQv_9Q9wqPtEVp9nM_TQ")
 
 def main(page: ft.Page):
     # --- Page Setup ---
@@ -22,87 +22,70 @@ def main(page: ft.Page):
     user_input = ft.TextField(
         hint_text="Type a message...",
         expand=True,
-        autofocus=True,
+        border_radius=20,
         shift_enter=True,
-        min_lines=1,
-        max_lines=5,
+        on_submit=lambda e: send_message(e)
     )
 
-    send_button = ft.IconButton(
-        icon=ft.icons.SEND_ROUNDED,
-        icon_color=ft.colors.BLUE_400,
-        tooltip="Send message",
-    )
-
-    # --- Event Handlers ---
-    def send_message_click(e):
+    def send_message(e):
         prompt = user_input.value.strip()
         if not prompt:
             return
 
-        # Clear input field
-        user_input.value = ""
-        
-        # Add User Message to Chat
+        # Display User Message
         chat_list.controls.append(
-            ft.Row(
-                controls=[
-                    ft.Container(
-                        content=ft.Text(prompt, color=ft.colors.WHITE),
-                        bgcolor=ft.colors.BLUE_800,
-                        padding=12,
-                        border_radius=15,
-                    )
-                ],
-                alignment=ft.MainAxisAlignment.END,
+            ft.Container(
+                content=ft.Text(prompt, color=ft.Colors.WHITE),
+                alignment=ft.alignment.center_right,
+                bgcolor=ft.Colors.BLUE_GREY_800,
+                padding=10,
+                border_radius=10,
             )
         )
+        user_input.value = ""
         page.update()
 
-        # Generate Gemini Response
         try:
+            # Generate AI Response
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model='gemini-2.5-flash',
                 contents=prompt,
             )
-            bot_text = response.text if response.text else "No response generated."
-        except Exception as err:
-            bot_text = f"Error: {str(err)}"
 
-        # Add Gemini Response to Chat
-        chat_list.controls.append(
-            ft.Row(
-                controls=[
-                    ft.Container(
-                        content=ft.Text(bot_text, color=ft.colors.WHITE),
-                        bgcolor=ft.colors.GREY_800,
-                        padding=12,
-                        border_radius=15,
-                    )
-                ],
-                alignment=ft.MainAxisAlignment.START,
+            # Display AI Message
+            chat_list.controls.append(
+                ft.Container(
+                    content=ft.Text(response.text, color=ft.Colors.WHITE),
+                    alignment=ft.alignment.center_left,
+                    bgcolor=ft.Colors.BLUE_900,
+                    padding=10,
+                    border_radius=10,
+                )
             )
-        )
+        except Exception as err:
+            chat_list.controls.append(
+                ft.Container(
+                    content=ft.Text(f"Error: {str(err)}", color=ft.Colors.RED_400),
+                    alignment=ft.alignment.center_left,
+                    padding=10,
+                )
+            )
+
         page.update()
 
-    # Bind Send Actions
-    send_button.on_click = send_message_click
-    user_input.on_submit = send_message_click
-
-    # Input Bar Layout
-    input_row = ft.Row(
-        controls=[
-            user_input,
-            send_button,
-        ],
-        alignment=ft.MainAxisAlignment.CENTER,
+    send_button = ft.IconButton(
+        icon=ft.Icons.SEND_ROUNDED,
+        icon_color=ft.Colors.BLUE_400,
+        on_click=send_message
     )
 
-    # --- Add Controls to Page ---
+    # --- Layout ---
     page.add(
         chat_list,
-        input_row,
+        ft.Row(
+            controls=[user_input, send_button],
+            alignment=ft.MainAxisAlignment.CENTER
+        )
     )
 
-if __name__ == "__main__":
-    ft.app(target=main)
+ft.app(target=main)
