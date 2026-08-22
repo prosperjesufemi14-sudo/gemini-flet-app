@@ -1,145 +1,170 @@
-import flet as ft
-import google.generativeai as genai
 import os
+import flet as ft
+from google import genai
+from google.genai import types
 
-# ==========================================
-# 1. API KEY CONFIGURATION
-# ==========================================
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AQ.Ab8RN6IW-gEKorUTVuu9iQq8-YiRMy_tlKALEY4EablGqc-oDQ")
 
-genai.configure(api_key=GEMINI_API_KEY)
+# ============================================================
+# GEMINI CONFIGURATION
+# ============================================================
 
-# ==========================================
-# 2. PROSPER AI PERSONA & CREATOR BIO
-# ==========================================
-system_instruction = """
-You are Prosper AI, an intelligent, helpful, and professional AI assistant.
+# Fetch API key safely from GitHub Secrets / Environment Variable
+API_KEY = os.getenv("GEMINI_API_KEY")
 
-CRITICAL CREATOR INFORMATION:
-If the user asks "Who created you?", "Who built this app?", "Who is your developer?", or any variation about your creator, you MUST respond with the following details:
+if not API_KEY:
+    raise RuntimeError(
+        "GEMINI_API_KEY is not configured. Please set the environment variable."
+    )
 
-FUWA PROSPER JESUFEMI
-Date of Birth: July 10, 2010
+client = genai.Client(api_key=API_KEY)
 
-Fuwa Prosper Jesufemi is a young YouTuber, Content Creator, Gamer, Website Developer, and Tech Enthusiast with a passion for technology, digital creativity, gaming, and innovation.
 
-He creates content focused on technology, gadgets, gaming, lifestyle, and personal growth, while continuously developing his skills in web development and digital media.
+# ============================================================
+# PROSPER AI PERSONALITY
+# ============================================================
 
-Beyond technology and content creation, Prosper is also an aspiring lawyer, currently building the knowledge and discipline needed to pursue a career in law.
+SYSTEM_INSTRUCTION = """
+You are Prosper AI, an intelligent, helpful, friendly,
+and professional AI assistant.
 
-Areas of Interest:
-- 🎥 YouTube & Content Creation
-- 🎮 Gaming
-- 💻 Website Development
-- 📱 Technology & Gadgets
-- ⚖️ Law & Legal Studies
-- 🚀 Entrepreneurship & Personal Development
+Your creator is Fuwa Prosper Jesufemi.
 
-Vision:
-To build a strong digital brand, inspire others through content, develop innovative technology solutions, and eventually make an impact in both the technology and legal industries.
+If the user asks who created you, who built you,
+who is your developer, or who made Prosper AI,
+say that Prosper AI was created by Fuwa Prosper Jesufemi.
 
-“Creating. Building. Learning. Becoming.”
+Fuwa Prosper Jesufemi is a young YouTuber, content creator,
+gamer, website developer, and technology enthusiast.
 
-RULES:
-- Never say you were created by Google or OpenAI. Always attribute your creation to Fuwa Prosper Jesufemi.
+His interests include:
+- YouTube and content creation
+- Gaming
+- Website development
+- Technology and gadgets
+- Entrepreneurship
+- Personal development
+- Law and legal studies
+
+Be helpful, friendly, and professional.
 """
 
-# Initialize Gemini model with System Instruction
-model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
-    system_instruction=system_instruction
-)
 
-chat_session = model.start_chat(history=[])
-is_owner_mode = False
+# ============================================================
+# FLET APPLICATION
+# ============================================================
 
-# ==========================================
-# 3. FLET MOBILE UI APPLICATION
-# ==========================================
 def main(page: ft.Page):
-    global is_owner_mode
 
     page.title = "Prosper AI"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 10
 
-    # Chat message list
     chat_list = ft.ListView(
         expand=True,
         spacing=10,
         auto_scroll=True
     )
 
-    # Input text field
     message_input = ft.TextField(
-        hint_text="Type a message...",
+        hint_text="Ask Prosper AI something...",
         expand=True,
-        border_radius=20,
-        shift_enter=True
+        border_radius=20
     )
 
-    def send_message_click(e):
-        global is_owner_mode
+    def send_message(e):
 
-        user_text = message_input.value.strip()
+        user_text = (message_input.value or "").strip()
+
         if not user_text:
             return
 
-        # Display user message
+        # Show user message
         chat_list.controls.append(
             ft.Container(
-                content=ft.Text(user_text, color=ft.colors.WHITE),
+                content=ft.Text(
+                    user_text,
+                    color=ft.Colors.WHITE
+                ),
                 alignment=ft.alignment.center_right,
-                bgcolor=ft.colors.BLUE_700,
+                bgcolor=ft.Colors.BLUE_700,
                 padding=12,
                 border_radius=15,
                 margin=ft.margin.only(left=50)
             )
         )
-        
+
         message_input.value = ""
         page.update()
 
-        # Check for Owner Mode trigger
-        if user_text == "Fuwa123":
-            is_owner_mode = True
-            bot_reply = "🔓 **OWNER MODE ACTIVATED.** Welcome back, Creator Fuwa Prosper Jesufemi. Systems fully accessible."
-        else:
-            try:
-                prompt = user_text
-                if is_owner_mode:
-                    prompt = f"[SYSTEM: User is authenticated as Owner/Creator Fuwa Prosper Jesufemi]. User says: {user_text}"
-                
-                response = chat_session.send_message(prompt)
-                bot_reply = response.text
-            except Exception as err:
-                bot_reply = f"Error: {str(err)}\nPlease verify your Gemini API key."
+        try:
+            # Send request using google-genai SDK
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=[
+                    types.Content(
+                        role="user",
+                        parts=[
+                            types.Part(
+                                text=(
+                                    SYSTEM_INSTRUCTION
+                                    + "\n\nUser message:\n"
+                                    + user_text
+                                )
+                            )
+                        ]
+                    )
+                ]
+            )
 
-        # Display Bot response
+            bot_reply = response.text
+
+            if not bot_reply:
+                bot_reply = "Sorry, I couldn't generate a response."
+
+        except Exception as error:
+
+            print("Gemini error:", error)
+
+            bot_reply = (
+                "❌ Gemini connection failed.\n\n"
+                "Please check your API configuration "
+                "and internet connection."
+            )
+
+        # Show AI response
         chat_list.controls.append(
             ft.Container(
-                content=ft.Text(bot_reply, color=ft.colors.WHITE),
+                content=ft.Text(
+                    bot_reply,
+                    color=ft.Colors.WHITE,
+                    selectable=True
+                ),
                 alignment=ft.alignment.center_left,
-                bgcolor=ft.colors.GREY_800,
+                bgcolor=ft.Colors.GREY_800,
                 padding=12,
                 border_radius=15,
                 margin=ft.margin.only(right=50)
             )
         )
+
         page.update()
 
-    # Layout structure
     send_button = ft.IconButton(
-        icon=ft.icons.SEND_ROUNDED,
-        icon_color=ft.colors.BLUE_400,
-        on_click=send_message_click
+        icon=ft.Icons.SEND_ROUNDED,
+        icon_color=ft.Colors.BLUE_400,
+        on_click=send_message
     )
-
-    input_row = ft.Row([message_input, send_button])
 
     page.add(
         chat_list,
-        input_row
+        ft.Row(
+            controls=[
+                message_input,
+                send_button
+            ]
+        )
     )
 
-ft.app(target=main)
+
+if __name__ == "__main__":
+    ft.app(target=main)
