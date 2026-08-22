@@ -36,7 +36,7 @@ def main(page: ft.Page):
         chat_list.controls.append(
             ft.Container(
                 content=ft.Text(prompt, color=ft.Colors.WHITE),
-                alignment=ft.alignment.center_right,
+                alignment=ft.Alignment(1, 0),
                 bgcolor=ft.Colors.BLUE_GREY_800,
                 padding=10,
                 border_radius=10,
@@ -56,7 +56,7 @@ def main(page: ft.Page):
             chat_list.controls.append(
                 ft.Container(
                     content=ft.Text(response.text, color=ft.Colors.WHITE),
-                    alignment=ft.alignment.center_left,
+                    alignment=ft.Alignment(-1, 0),
                     bgcolor=ft.Colors.BLUE_900,
                     padding=10,
                     border_radius=10,
@@ -66,7 +66,7 @@ def main(page: ft.Page):
             chat_list.controls.append(
                 ft.Container(
                     content=ft.Text(f"Error: {str(err)}", color=ft.Colors.RED_400),
-                    alignment=ft.alignment.center_left,
+                    alignment=ft.Alignment(-1, 0),
                     padding=10,
                 )
             )
